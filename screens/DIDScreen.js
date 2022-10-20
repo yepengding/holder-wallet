@@ -3,6 +3,7 @@ import {StatusBar} from "expo-status-bar";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useEffect, useState} from "react";
 import {Separator} from "../components/UtilView";
+import {createDID} from "../api/DIDAPIs";
 
 /**
  * DID Screen
@@ -14,20 +15,27 @@ import {Separator} from "../components/UtilView";
 export const DIDScreen = () => {
 
     const [localDID, setLocalDID] = useState('');
+    const [privateKeys, setPrivateKeys] = useState({authKey: '', assertKey: ''});
 
     useEffect(() => {
-        (async () => getLocalDID())();
+        (async () => getLocalDIDInfo())();
     })
 
     /**
-     * Create DID and store into local storage
+     * Issue a new self-controlled DID and store into local storage
      *
      * @return {Promise<void>}
      */
-    const createDID = async () => {
+    const issueDID = async () => {
         try {
-            await AsyncStorage.setItem('did', "did:test:0001");
-            setLocalDID(await getLocalDID());
+            createDID("holder", `1666297424416`).then(async (data) => {
+                if (data) {
+                    await AsyncStorage.setItem('did', data.did);
+                    await AsyncStorage.setItem('authenticationPrivateKey', data.authenticationPrivateKey);
+                    await AsyncStorage.setItem('assertionMethodPrivateKey', data.assertionMethodPrivateKey);
+                    setLocalDID(await getLocalDID());
+                }
+            })
         } catch (e) {
             Alert.alert("Failed to create DID.");
         }
@@ -38,10 +46,21 @@ export const DIDScreen = () => {
      *
      * @return {Promise<string|string>}
      */
-    const getLocalDID = async () => {
+    const getLocalDIDInfo = async () => {
         try {
-            const value = await AsyncStorage.getItem('did');
-            return value !== null ? value : "";
+            let did = await AsyncStorage.getItem('did');
+            did = did !== null ? did : "";
+            setLocalDID(did);
+
+            let authKey = await AsyncStorage.getItem('authenticationPrivateKey');
+            authKey = authKey !== null ? authKey : "";
+            let assertKey = await AsyncStorage.getItem('assertionMethodPrivateKey');
+            assertKey = assertKey !== null ? assertKey : "";
+            setPrivateKeys({
+                authKey: authKey,
+                assertKey: assertKey
+            })
+
         } catch (error) {
             Alert.alert("Failed to read local DID.");
         }
@@ -52,7 +71,7 @@ export const DIDScreen = () => {
      *
      * @return {Promise<void>}
      */
-    const clearLocalDID = async () => {
+    const clearLocalDIDInfo = async () => {
         try {
             await AsyncStorage.removeItem('did');
             setLocalDID("");
@@ -65,13 +84,18 @@ export const DIDScreen = () => {
         <SafeAreaView style={styles.container}>
             <StatusBar style="auto"/>
             <View style={styles.didView}>
-                <Text>{localDID}</Text>
+                <Text style={styles.label}>DID</Text>
+                <Text selectable={true}>{localDID}</Text>
+                <Text style={styles.label}>Authentication Key</Text>
+                <Text selectable={true}>{privateKeys.authKey}</Text>
+                <Text style={styles.label}>Assertion Key</Text>
+                <Text selectable={true}>{privateKeys.assertKey}</Text>
             </View>
             <Separator/>
             <View style={styles.buttonView}>
                 <Button
                     title="Create DID"
-                    onPress={() => createDID()}
+                    onPress={() => issueDID()}
                     disabled={localDID !== ""}
                 />
             </View>
@@ -79,7 +103,7 @@ export const DIDScreen = () => {
                 <Button
                     title="Remove DID"
                     color="#dc3545"
-                    onPress={() => clearLocalDID()}
+                    onPress={() => clearLocalDIDInfo()}
                     disabled={localDID === ""}
                 />
             </View>
@@ -99,5 +123,9 @@ const styles = StyleSheet.create({
     },
     buttonView: {
         margin: 8
+    },
+    label: {
+        fontSize: 18,
+        fontWeight: "bold",
     }
 });
