@@ -32,6 +32,10 @@ npm run start
 
 4. Scan the QR code to run app preview on the mobile device
 
+## Screenshot
+
+![Home Screen](./docs/figures/home.png)
+
 ---
 
 # References
