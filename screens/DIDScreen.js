@@ -1,9 +1,10 @@
-import {Alert, Button, SafeAreaView, StyleSheet, Text, View} from "react-native";
+import {Alert, Button, SafeAreaView, StyleSheet, Text, TextInput, View} from "react-native";
 import {StatusBar} from "expo-status-bar";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useEffect, useState} from "react";
 import {Separator} from "../components/UtilView";
 import {createDID} from "../api/DIDAPIs";
+import {Assert} from "../util/Assertion";
 
 /**
  * DID Screen
@@ -14,6 +15,7 @@ import {createDID} from "../api/DIDAPIs";
  */
 export const DIDScreen = () => {
 
+    const [identifier, setIdentifier] = useState('');
     const [localDID, setLocalDID] = useState('');
     const [privateKeys, setPrivateKeys] = useState({authKey: '', assertKey: ''});
 
@@ -27,17 +29,21 @@ export const DIDScreen = () => {
      * @return {Promise<void>}
      */
     const issueDID = async () => {
+        Assert.isTrue(identifier && identifier.length > 0 && identifier.length <= 255, () => {
+            Alert.alert("Invalid identifier.");
+        });
         try {
-            createDID("holder", `1666297424416`).then(async (data) => {
+            createDID("holder", identifier).then(async (data) => {
                 if (data) {
                     await AsyncStorage.setItem('did', data.did);
                     await AsyncStorage.setItem('authenticationPrivateKey', data.authenticationPrivateKey);
                     await AsyncStorage.setItem('assertionMethodPrivateKey', data.assertionMethodPrivateKey);
-                    setLocalDID(await getLocalDID());
+                    await getLocalDIDInfo();
                 }
             })
         } catch (e) {
             Alert.alert("Failed to create DID.");
+            throw Error;
         }
     }
 
@@ -74,7 +80,10 @@ export const DIDScreen = () => {
     const clearLocalDIDInfo = async () => {
         try {
             await AsyncStorage.removeItem('did');
+            await AsyncStorage.removeItem('authenticationPrivateKey');
+            await AsyncStorage.removeItem('assertionMethodPrivateKey');
             setLocalDID("");
+            setPrivateKeys({authKey: '', assertKey: ''});
         } catch (e) {
             Alert.alert("Failed to remove DID.");
         }
@@ -83,13 +92,20 @@ export const DIDScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar style="auto"/>
+            <TextInput
+                style={styles.input}
+                onChangeText={setIdentifier}
+                value={identifier}
+                placeholder="Your identifier"
+            />
+            <Separator/>
             <View style={styles.didView}>
                 <Text style={styles.label}>DID</Text>
-                <Text selectable={true}>{localDID}</Text>
+                <Text style={styles.text} selectable={true}>{localDID}</Text>
                 <Text style={styles.label}>Authentication Key</Text>
-                <Text selectable={true}>{privateKeys.authKey}</Text>
+                <Text style={styles.text} selectable={true}>{privateKeys.authKey}</Text>
                 <Text style={styles.label}>Assertion Key</Text>
-                <Text selectable={true}>{privateKeys.assertKey}</Text>
+                <Text style={styles.text} selectable={true}>{privateKeys.assertKey}</Text>
             </View>
             <Separator/>
             <View style={styles.buttonView}>
@@ -118,6 +134,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         marginHorizontal: 16,
     },
+    identifierView: {
+        margin: 16
+    },
+    input: {
+        height: 40,
+        margin: 16,
+        borderWidth: 1,
+        padding: 10,
+    },
     didView: {
         margin: 16
     },
@@ -127,5 +152,10 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 18,
         fontWeight: "bold",
+    },
+    text: {
+        borderWidth: 1,
+        marginVertical: 5,
+        padding: 3
     }
 });

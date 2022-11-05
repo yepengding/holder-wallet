@@ -1,5 +1,6 @@
 import {env} from "../config/env";
 import {Alert} from "react-native";
+import axios from "axios";
 
 export const createDID = (method, methodIdentifier) => {
     const mutationData = {
@@ -19,15 +20,8 @@ export const createDID = (method, methodIdentifier) => {
                         }`
     };
 
-    return fetch(`${env.vdr.endpoint}/graphql/`, {
-        method: 'POST',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(mutationData),
-    })
-        .then(res => res.json())
+    return axios.post(`${env.vdr.endpoint}/graphql/`, mutationData, {timeout: 5000})
+        .then(res => res.data)
         .then(res => {
             if (!res.errors) {
                 return res.data.createDID;
@@ -39,5 +33,6 @@ export const createDID = (method, methodIdentifier) => {
         .catch((error) => {
             console.error(error);
             Alert.alert("Failed to connect to the verifiable data registry.");
+            throw Error;
         });
 }
